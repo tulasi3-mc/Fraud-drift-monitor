@@ -1,0 +1,9 @@
+loaded: 120000 rows x 73 cols
+duplicate rows removed: 0
+time range: 2026-01-01 00:00:00 -> 2026-06-30 23:58:00
+columns with NaN: 3
+features used: 42 (categorical: 9)
+leakage columns dropped: 29
+train Jan-Feb: rows=39133 fraud_rate=0.0950
+val Mar: rows=20445 fraud_rate=0.0932
+stream Apr-Jun: rows=60422 fraud_rate=0.0954

@@ -1,0 +1,23 @@
+# environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# local working files (not part of the project)
+_good_*/
+.playwright-mcp/
+.claude/
+CLAUDE.md
+producer.log
+
+# derived data, rebuilt by prep_drift.py
+data/clean.joblib
+
+# earlier generic hackathon templates, not used by this project
+app.py
+train.py
+train_text.py
+train_image.py
+check_env.py
+demo/
+requirements.txt
