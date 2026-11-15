@@ -21,12 +21,10 @@ Opens at http://localhost:8501. Everything runs locally; no internet needed afte
   docker run -d --name kafka -p 9092:9092 apache/kafka:3.9.1
   ```
   Stop it with `docker rm -f kafka`. No API key: the broker runs on this laptop.
-- **Check a transaction**: score one real transaction, see the alert decision and *why* (LightGBM per-feature
-  contributions), then let the thief copy an honest customer's spending speed and score it again.
 - **Train the model**: train LightGBM live (loss curve, cost-vs-threshold curve, confusion matrix, feature importance);
   it checks that the result reproduces the deployed model.
-- **1–4**: the analysis: real-stream findings, the attack simulation with sensitivity and placebo tests, model and cost,
-  method and limits.
+- **1–3**: the analysis: real-stream findings, the attack simulation with sensitivity and placebo tests, and the method
+  and its limits.
 
 ## Problem
 

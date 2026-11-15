@@ -94,8 +94,9 @@ trains LightGBM in about a second, in front of you.
 same confirmation date, same 75,256 retraining rows, same costs (2,357 vs 7,217). It prints PASS.
 
 **Can the model explain one decision?**
-Yes: "Check a transaction" shows the fraud probability and the features that pushed it up or down. When the thief copies
-an honest customer's speed, the score drops, but `prior_dispute_ratio_90d` still pushes it over the threshold.
+Yes: in the Live control room, every ALERT in the incoming data has a "fault found" column: the two signals that pushed
+its score up the most, next to the honest normal value (e.g. "spent 163.9 in the last hour (honest normal: 0)"). After
+"Launch attack", adapted thieves are often still flagged because `prior_dispute_ratio_90d` pushes them over the threshold.
 
 **Is the Kafka data real?**
 The transactions are new: real March transactions resampled onto each new day with fresh IDs, sent one by one through a

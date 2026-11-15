@@ -638,85 +638,11 @@ on March to minimise 50 × missed thieves + 1 × false alarm. Time order is kept
         style(fig, "What the model relies on (top 12 features)", height=360)
 
 
-# ---------------- Check a transaction ----------------
-EDITABLE = ["amount_last_1h", "transactions_last_24h", "merchant_velocity_24h", "device_change_7d", "prior_dispute_ratio_90d"]
-
-
-def stream_rows():
-    b = E.M.base
-    return b[b["transaction_datetime"] >= E.M.STREAM_START]
-
-
-def pick(kind):
-    s = stream_rows()
-    pool = s[s["is_fraud"] == (1 if kind == "fraud" else 0)]
-    ss.ck_idx = int(pool.sample(1, random_state=int(pd.Timestamp.now().value % 1_000_000)).index[0])
-    ss.ck_row = E.M.base.loc[[ss.ck_idx]].copy()   # slice keeps category dtypes (a dict-built row would not)
-    ss.ck_note = None
-    ss.ck_ver = ss.get("ck_ver", 0) + 1   # resets the edit boxes
-
-
-def copy_honest_speed():
-    b = E.M.base
-    honest = b[(b["is_fraud"] == 0) & (b["transaction_datetime"] >= E.M.REF_START) & (b["transaction_datetime"] < E.M.REF_END)]
-    donor = honest.sample(1, random_state=int(pd.Timestamp.now().value % 1_000_000))
-    for c in E.M.VELOCITY:
-        ss.ck_row.loc[ss.ck_idx, c] = donor[c].values[0]
-    ss.ck_note = "Velocity features replaced with a random honest March customer's values (the 'thief adapts' attack)."
-    ss.ck_ver = ss.get("ck_ver", 0) + 1
-
-
-def check_tab():
-    st.markdown("""<div class="result"><div class="label">Model in action</div>
-<div class="value">Score one transaction and see why.</div>
-<div class="why">Pick a real transaction from the Apr–Jun stream. The model gives a fraud probability, the alert decision
-at the cost-based threshold, and the features that pushed the score up or down (LightGBM's own per-feature contributions).
-Then let the thief copy an honest customer's spending speed and score it again.</div></div>""", unsafe_allow_html=True)
-    if "ck_row" not in ss:
-        pick("fraud")
-    b1, b2, b3, b4 = st.columns([1, 1, 1.6, 1.4])
-    if b1.button("Random fraud", key="ck_fraud"):
-        pick("fraud")
-    if b2.button("Random honest", key="ck_honest"):
-        pick("honest")
-    if b3.button("Thief copies an honest customer's speed", key="ck_copy"):
-        copy_honest_speed()
-    models = {"v1 (deployed)": E.M.model}
-    if len(ss.eng.models) > 1:
-        models["v2 (retrained in the control room)"] = ss.eng.models[max(ss.eng.models)]
-    mname = b4.radio("Model", list(models), key="ck_model", horizontal=False)
-    model = models[mname]
-
-    row = ss.ck_row
-    with st.expander("Edit key fields", expanded=False):
-        cols = st.columns(len(EDITABLE))
-        for c, f in zip(cols, EDITABLE):
-            v = c.number_input(f, value=float(row[f].iloc[0]), key=f"ck_{f}_{ss.ck_ver}")
-            row.loc[ss.ck_idx, f] = type(row[f].iloc[0])(v) if not isinstance(row[f].iloc[0], float) else v
-
-    p = float(E.score(model, row[E.M.feats])[0])
-    alert = p >= E.M.thr
-    truth = "fraud" if int(row["is_fraud"].iloc[0]) == 1 else "honest"
-    st.markdown(f"""<div class="result"><div class="label">Transaction {row['transaction_id'].iloc[0]} ·
-{row['transaction_datetime'].iloc[0]:%Y-%m-%d %H:%M} · true label (hidden from the model): {truth}</div>
-<div class="value">{'ALERT' if alert else 'No alert'} · fraud probability {p:.3f}</div>
-<div class="why">Threshold {E.M.thr:.2f} (one missed thief costs as much as 50 false alarms).
-{('<br><i>' + ss.ck_note + '</i>') if ss.get('ck_note') else ''}</div></div>""", unsafe_allow_html=True)
-
-    top, bias = E.explain(model, row)
-    fig = go.Figure(go.Bar(x=top["contribution"][::-1], y=[f"{f} = {v}" for f, v in zip(top["feature"], top["value"])][::-1],
-                           orientation="h", marker_color=[ACCENT if c > 0 else SAGE for c in top["contribution"][::-1]]))
-    fig.update_xaxes(title="push toward fraud (log-odds)  ·  red = toward fraud, green = toward honest")
-    style(fig, "Why: top 8 feature contributions", height=360)
-
-t0, tc, tt, t1, t2, t3, t4 = st.tabs(["Live control room", "Check a transaction", "Train the model", "1 · Real stream",
-                                      "2 · Thieves read the alerts", "3 · Model & cost", "4 · Method & limits"])
+t0, tt, t1, t2, t4 = st.tabs(["Live control room", "Train the model", "1 · Real stream",
+                              "2 · Thieves read the alerts", "3 · Method & limits"])
 
 with t0:
     live_tab()
-
-with tc:
-    check_tab()
 
 with tt:
     train_tab()
@@ -841,25 +767,7 @@ Baseline = wait for the labels; the warning is measured against that.</div></div
                           [(start, "tactic change", MUTED), (ws["lead_measured_from"], "our alarm", ACCENT),
                            (ws["first_label_confirmation"], "answers confirm", OCHRE)])
 
-# ---------------- Tab 3: model ----------------
-with t3:
-    v, s = met["val"], met["stream"]
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Model", "LightGBM")
-    c2.metric("Alert threshold", f"{met['threshold']:.2f}", help="Chosen on March to minimise 50×missed + 1×false alarm")
-    c3.metric("ROC-AUC (Apr–Jun)", f"{s['auc']:.5f}")
-    c4.metric("PR-AUC (Apr–Jun)", f"{s['pr_auc']:.5f}")
-    st.markdown(f"""
-- **Train** Jan–Feb · **tune threshold** March · **test** Apr–Jun (time order kept, no shuffling).
-- **Why the threshold is low ({met['threshold']:.2f}):** one missed thief costs as much as 50 false alarms, so the model
-  should alert early. On Apr–Jun it missed **{s['fn']}** thief and raised **{s['fp']}** false alarms out of {s['rows']:,}.
-- **29 columns removed as leakage:** drift labels, fraud type, dispute and chargeback outcomes, IDs, label timing.
-  These are only known after the transaction, or they give away the answer.
-- **Caution:** the score is near-perfect because spending-speed features almost separate fraud in this dataset.
-  Real fraud is harder. The monitor is the point of this project, not the score.
-""")
-
-# ---------------- Tab 4: method ----------------
+# ---------------- Tab: method & limits ----------------
 with t4:
     if sens:
         fired = sum(len(p["features_alarmed"]) for p in sens["placebo"])
