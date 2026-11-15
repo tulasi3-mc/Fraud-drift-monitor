@@ -43,6 +43,18 @@ A monitor that sits next to a fraud model on a transaction stream. It:
 
 The alert threshold follows the cost rule: one missed thief costs 50, one false alarm costs 1.
 
+## Screenshots
+
+Captured from the running app (`app_drift.py`, 1536×864, Playwright):
+
+- `docs/screenshots/01-live-control-room.png`: live replay on day 3, alerts and cost counters updating.
+- `docs/screenshots/02-thieves-read-the-alerts.png`: simulated tactic change on 2026-05-01, alarm on 2026-05-03, confirmed by labels on 2026-05-21.
+- `docs/screenshots/03-train-the-model.png`: live training, stopped at round 275, cost-vs-threshold curve, confusion matrix.
+
+![Live control room](docs/screenshots/01-live-control-room.png)
+![Thieves read the alerts](docs/screenshots/02-thieves-read-the-alerts.png)
+![Train the model](docs/screenshots/03-train-the-model.png)
+
 ## Results
 
 | | Real stream | Simulation: thieves read the alerts |
